@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENTITY RBAC Service - Test Console</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        h1 { color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 10px; }
+        h2 { color: #0066cc; margin-top: 30px; border-left: 4px solid #0066cc; padding-left: 10px; }
+        h3 { color: #555; margin-top: 20px; }
+        
+        .config-section { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .config-section label { font-weight: bold; margin-right: 10px; }
+        .config-section input { padding: 8px; width: 200px; border: 1px solid #ccc; border-radius: 4px; }
+        .config-section button { padding: 8px 16px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; }
+        .config-section button:hover { background: #0055aa; }
+        
+        .endpoint-group { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .endpoint-row { display: flex; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px; }
+        .method { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; min-width: 50px; text-align: center; }
+        .method.get { background: #61affe; color: white; }
+        .method.post { background: #49cc90; color: white; }
+        .method.delete { background: #f93e3e; color: white; }
+        .endpoint-path { font-family: monospace; color: #333; flex: 1; min-width: 300px; }
+        .endpoint-btn { padding: 6px 12px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .endpoint-btn:hover { background: #0055aa; }
+        .endpoint-btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        .input-small { padding: 6px; width: 100px; border: 1px solid #ccc; border-radius: 4px; }
+        .input-medium { padding: 6px; width: 150px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        .result-section { background: #fff; padding: 15px; border-radius: 8px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .result-title { font-weight: bold; color: #333; }
+        .result-status { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .result-status.success { background: #d4edda; color: #155724; }
+        .result-status.error { background: #f8d7da; color: #721c24; }
+        .result-content { background: #f8f9fa; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; }
+        
+        .clear-btn { padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .clear-btn:hover { background: #5a6268; }
+        
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { padding: 10px 20px; background: #e9ecef; border: none; border-radius: 4px 4px 0 0; cursor: pointer; }
+        .tab.active { background: #0066cc; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .json-input { width: 100%; min-height: 80px; font-family: monospace; padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; }
+        
+        .quick-actions { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .quick-btn { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .quick-btn:hover { background: #218838; }
+    </style>
+</head>
+<body>
+    <h1>ENTITY RBAC Service - Test Console</h1>
+    
+    <!-- Configuration -->
+    <div class="config-section">
+        <label>Base URL:</label>
+        <input type="text" id="baseUrl" value="http://localhost:8383/entity">
+        <label style="margin-left: 20px;">SEID:</label>
+        <input type="text" id="seid" value="AB1CD">
+        <button onclick="testConnection()">Test Connection</button>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="config-section">
+        <strong>Quick Actions:</strong>
+        <div class="quick-actions" style="margin-top: 10px;">
+            <button class="quick-btn" onclick="loadUserProfile()">Load Profile</button>
+            <button class="quick-btn" onclick="loadMenuPermissions()">Load Menus</button>
+            <button class="quick-btn" onclick="checkStaffStatus()">Check Staff</button>
+            <button class="quick-btn" onclick="loadAssignments()">Load Assignments</button>
+            <button class="quick-btn" onclick="loadChangeRoleConfig()">Change Role Config</button>
+        </div>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('core')">Core RBAC</button>
+        <button class="tab" onclick="showTab('change-access')">Change Access</button>
+        <button class="tab" onclick="showTab('change-role')">Change Role</button>
+    </div>
+    
+    <!-- Core RBAC Tab -->
+    <div id="core" class="tab-content active">
+        <h2>Core RBAC Endpoints</h2>
+        
+        <h3>User Profile</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/users/{seid}/profile</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/users/' + getSeid() + '/profile')">Execute</button>
+            </div>
+        </div>
+        
+        <h3>ELEVEL</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/users/{seid}/elevel</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/users/' + getSeid() + '/elevel')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/elevel/definitions</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/elevel/definitions')">Execute</button>
+            </div>
+        </div>
+        
+        <h3>Menu Permissions</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/menu/{seid}/permissions</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/menu/' + getSeid() + '/permissions')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/menu/{seid}/accessible</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/menu/' + getSeid() + '/accessible')">Execute</button>
+            </div>
+        </div>
+        
+        <h3>Staff</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/staff/{seid}</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/staff/' + getSeid())">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/staff/{seid}/is-staff</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/staff/' + getSeid() + '/is-staff')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/staff/orgs</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/staff/orgs')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/rbac/staff/{seid}/org/{orgCode}</span>
+                <select id="orgCode" class="input-small">
+                    <option value="CF">CF</option>
+                    <option value="CP">CP</option>
+                    <option value="WI">WI</option>
+                    <option value="AD">AD</option>
+                </select>
+                <button class="endpoint-btn" onclick="callApi('POST', '/api/rbac/staff/' + getSeid() + '/org/' + document.getElementById('orgCode').value)">Execute</button>
+            </div>
+        </div>
+        
+        <h3>Hierarchy</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/hierarchy/{seid}</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/hierarchy/' + getSeid())">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/hierarchy/{seid}/areas</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/hierarchy/' + getSeid() + '/areas')">Execute</button>
+            </div>
+        </div>
+        
+        <h3>Assignments</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/assignments/{seid}</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/assignments/' + getSeid())">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/assignments/{seid}/current</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/assignments/' + getSeid() + '/current')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/assignments/{seid}/has-multiple</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/assignments/' + getSeid() + '/has-multiple')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/rbac/assignments/{seid}/switch/{roid}</span>
+                <input type="text" id="switchRoid" class="input-medium" placeholder="ROID">
+                <button class="endpoint-btn" onclick="callApi('POST', '/api/rbac/assignments/' + getSeid() + '/switch/' + document.getElementById('switchRoid').value)">Execute</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Change Access Tab -->
+    <div id="change-access" class="tab-content">
+        <h2>Change Access Endpoints</h2>
+        
+        <h3>Context Management</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/context/{seid}</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/context/' + getSeid())">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/rbac/context/{seid}/reset</span>
+                <button class="endpoint-btn" onclick="callApi('POST', '/api/rbac/context/' + getSeid() + '/reset')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/rbac/context/{seid}/change</span>
+                <button class="endpoint-btn" onclick="changeAccessContext()">Execute</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <textarea id="changeAccessBody" class="json-input" placeholder='{"level": "AREA", "code": "21000000", "org": "CF"}'></textarea>
+            </div>
+        </div>
+        
+        <h3>Visibility</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/menu/{seid}/change-access-visible</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/menu/' + getSeid() + '/change-access-visible')">Execute</button>
+            </div>
+        </div>
+        
+        <h3>Hierarchy Navigation</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/hierarchy/{seid}/nav/areas</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/hierarchy/' + getSeid() + '/nav/areas')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/hierarchy/{seid}/area/{areaCode}/territories</span>
+                <input type="text" id="areaCode" class="input-small" placeholder="21" value="21">
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/hierarchy/' + getSeid() + '/area/' + document.getElementById('areaCode').value + '/territories')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/hierarchy/{seid}/territory/{territoryCode}/groups</span>
+                <input type="text" id="territoryCode" class="input-small" placeholder="2103" value="2103">
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/hierarchy/' + getSeid() + '/territory/' + document.getElementById('territoryCode').value + '/groups')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/hierarchy/{seid}/group/{groupCode}/officers</span>
+                <input type="text" id="groupCode" class="input-small" placeholder="210301" value="210301">
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/hierarchy/' + getSeid() + '/group/' + document.getElementById('groupCode').value + '/officers')">Execute</button>
+            </div>
+        </div>
+        
+        <h3>Validation & Search</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/hierarchy/validate/{code}</span>
+                <input type="text" id="validateCode" class="input-medium" placeholder="21030100" value="21030100">
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/hierarchy/validate/' + document.getElementById('validateCode').value)">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/hierarchy/{seid}/search?q={term}</span>
+                <input type="text" id="searchTerm" class="input-medium" placeholder="Smith">
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/hierarchy/' + getSeid() + '/search?q=' + document.getElementById('searchTerm').value)">Execute</button>
+            </div>
+        </div>
+        
+        <h3>Organizations</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/organizations/{seid}</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/organizations/' + getSeid())">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/rbac/organizations/{seid}/change/{orgCode}</span>
+                <select id="changeOrgCode" class="input-small">
+                    <option value="CF">CF</option>
+                    <option value="CP">CP</option>
+                    <option value="WI">WI</option>
+                    <option value="AD">AD</option>
+                </select>
+                <button class="endpoint-btn" onclick="callApi('POST', '/api/rbac/organizations/' + getSeid() + '/change/' + document.getElementById('changeOrgCode').value)">Execute</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Change Role Tab -->
+    <div id="change-role" class="tab-content">
+        <h2>Change Role Endpoints</h2>
+        
+        <h3>Configuration</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/role/config/{seid}</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/role/config/' + getSeid())">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/role/current/{seid}</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/role/current/' + getSeid())">Execute</button>
+            </div>
+        </div>
+        
+        <h3>General User Mode</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/role/general/{seid}/options</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/role/general/' + getSeid() + '/options')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/rbac/role/general/{seid}/change</span>
+                <input type="text" id="generalRoid" class="input-medium" placeholder="ROID (e.g., 25072307)">
+                <button class="endpoint-btn" onclick="changeRoleGeneral()">Execute</button>
+            </div>
+        </div>
+        
+        <h3>Staff User Mode</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/role/staff/{seid}/options</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/role/staff/' + getSeid() + '/options')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/rbac/role/staff/{seid}/change</span>
+                <button class="endpoint-btn" onclick="changeRoleStaff()">Execute</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <textarea id="staffChangeBody" class="json-input" placeholder='{
+  "level": "AREA",
+  "levelValue": "21",
+  "assignmentRoid": "85906265",
+  "orgFunction": "FC",
+  "keepAsDefault": false
+}'></textarea>
+            </div>
+            <div class="endpoint-row" style="margin-top: 10px;">
+                <span class="method delete">DELETE</span>
+                <span class="endpoint-path">/api/rbac/role/staff/{seid}/default</span>
+                <button class="endpoint-btn" onclick="callApi('DELETE', '/api/rbac/role/staff/' + getSeid() + '/default')">Execute</button>
+            </div>
+        </div>
+        
+        <h3>Validation</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/role/validate/level-value</span>
+                <select id="validateLevel" class="input-small">
+                    <option value="NATIONAL">National</option>
+                    <option value="AREA">Area</option>
+                    <option value="TERRITORY">Territory</option>
+                    <option value="GROUP">Group</option>
+                    <option value="EMPLOYEE">Employee</option>
+                </select>
+                <input type="text" id="validateValue" class="input-small" placeholder="Value">
+                <button class="endpoint-btn" onclick="validateLevelValue()">Execute</button>
+            </div>
+        </div>
+        
+        <h3>Dropdown Data</h3>
+        <div class="endpoint-group">
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/role/levels</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/role/levels')">Execute</button>
+            </div>
+            <div class="endpoint-row">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/rbac/role/org-functions</span>
+                <button class="endpoint-btn" onclick="callApi('GET', '/api/rbac/role/org-functions')">Execute</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div class="result-section">
+        <div class="result-header">
+            <span class="result-title">Response</span>
+            <div>
+                <span id="resultStatus" class="result-status"></span>
+                <button class="clear-btn" onclick="clearResult()">Clear</button>
+            </div>
+        </div>
+        <div id="resultContent" class="result-content">Click an endpoint to see the response...</div>
+    </div>
+    
+    <script>
+        function getBaseUrl() {
+            return document.getElementById('baseUrl').value.replace(/\/$/, '');
+        }
+        
+        function getSeid() {
+            return document.getElementById('seid').value;
+        }
+        
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+        
+        async function callApi(method, endpoint, body = null) {
+            const url = getBaseUrl() + endpoint;
+            const resultContent = document.getElementById('resultContent');
+            const resultStatus = document.getElementById('resultStatus');
+            
+            resultContent.textContent = `Calling ${method} ${url}...`;
+            resultStatus.textContent = '';
+            resultStatus.className = 'result-status';
+            
+            try {
+                const options = {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                
+                if (body && (method === 'POST' || method === 'PUT')) {
+                    options.body = JSON.stringify(body);
+                }
+                
+                const response = await fetch(url, options);
+                const data = await response.json();
+                
+                resultContent.textContent = JSON.stringify(data, null, 2);
+                resultStatus.textContent = `${response.status} ${response.statusText}`;
+                resultStatus.className = 'result-status ' + (response.ok ? 'success' : 'error');
+            } catch (error) {
+                resultContent.textContent = `Error: ${error.message}\n\nURL: ${url}`;
+                resultStatus.textContent = 'Error';
+                resultStatus.className = 'result-status error';
+            }
+        }
+        
+        function clearResult() {
+            document.getElementById('resultContent').textContent = 'Click an endpoint to see the response...';
+            document.getElementById('resultStatus').textContent = '';
+            document.getElementById('resultStatus').className = 'result-status';
+        }
+        
+        // Quick Actions
+        function testConnection() {
+            callApi('GET', '/api/rbac/elevel/definitions');
+        }
+        
+        function loadUserProfile() {
+            callApi('GET', '/api/rbac/users/' + getSeid() + '/profile');
+        }
+        
+        function loadMenuPermissions() {
+            callApi('GET', '/api/rbac/menu/' + getSeid() + '/permissions');
+        }
+        
+        function checkStaffStatus() {
+            callApi('GET', '/api/rbac/staff/' + getSeid());
+        }
+        
+        function loadAssignments() {
+            callApi('GET', '/api/rbac/assignments/' + getSeid());
+        }
+        
+        function loadChangeRoleConfig() {
+            callApi('GET', '/api/rbac/role/config/' + getSeid());
+        }
+        
+        // Change Access
+        function changeAccessContext() {
+            const body = document.getElementById('changeAccessBody').value;
+            try {
+                const parsed = JSON.parse(body || '{"level": "NATIONAL"}');
+                callApi('POST', '/api/rbac/context/' + getSeid() + '/change', parsed);
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        }
+        
+        // Change Role - General
+        function changeRoleGeneral() {
+            const roid = document.getElementById('generalRoid').value;
+            if (!roid) {
+                alert('Please enter a ROID');
+                return;
+            }
+            callApi('POST', '/api/rbac/role/general/' + getSeid() + '/change', { roid: roid });
+        }
+        
+        // Change Role - Staff
+        function changeRoleStaff() {
+            const body = document.getElementById('staffChangeBody').value;
+            try {
+                const parsed = JSON.parse(body || '{}');
+                callApi('POST', '/api/rbac/role/staff/' + getSeid() + '/change', parsed);
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        }
+        
+        // Validate Level Value
+        function validateLevelValue() {
+            const level = document.getElementById('validateLevel').value;
+            const value = document.getElementById('validateValue').value;
+            let url = '/api/rbac/role/validate/level-value?level=' + level;
+            if (value) url += '&value=' + value;
+            callApi('GET', url);
+        }
+    </script>
+</body>
+</html>
